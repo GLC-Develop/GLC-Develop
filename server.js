@@ -4,7 +4,11 @@ const port = 3000;
 
 // Importamos los servicios que ya tenemos listos
 const { buscarCliente } = require('./src/services/busquedaService');
-const { registrarPagosDinamicos } = require('./src/services/pagoService');
+const { 
+    registrarPagosDinamicos, 
+    generarReporteCobranza, 
+    realizarCorteCobrador // ✅ La importamos aquí
+} = require('./src/services/pagoService');
 
 app.use(express.json()); // Para que el servidor entienda datos en formato JSON
 app.use(express.static('public'));
@@ -22,15 +26,16 @@ app.get('/api/buscar', async (req, res) => {
 
 // RUTA 2: Registrar Pago (Para el botón de cobrar)
 app.post('/api/pagar', async (req, res) => {
-    const { clienteId, monto, metodo } = req.body;
+    // Ahora recibimos también el cobradorId desde el Front-end
+    const { clienteId, monto, metodo, cobradorId } = req.body; 
+    
     try {
-        const resultado = await registrarPagosDinamicos(clienteId, monto, metodo);
-        res.json({ mensaje: "Pago procesado con éxito", detalle: resultado });
+        const resultado = await registrarPagosDinamicos(clienteId, monto, metodo, parseInt(cobradorId));
+        res.json({ mensaje: "Pago procesado y asignado al cobrador", detalle: resultado });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
-
 app.listen(port, () => {
     console.log(`🚀 Servidor ERP-Wisp corriendo en http://localhost:${port}`);
 });

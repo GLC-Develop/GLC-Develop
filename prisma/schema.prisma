@@ -10,7 +10,39 @@ datasource db {
   url      = env("DATABASE_URL")
 
 }
+model Pagos {
+  id              Int          @id @default(autoincrement())
+  cliente_id      Int
+  monto           Decimal      @db.Decimal(10, 2)
+  fecha_pago      DateTime     @default(now())
+  metodo_pago     String       
+  
+  // --- Campos de Control de Mensualidades (Anteriores) ---
+  mes_cubierto    String       // Formato "YYYY-MM"
+  periodo_inicio  DateTime?    
+  referencia      String?      
+  notas           String?
 
+  // --- Campos de Auditoría de Cobradores (Nuevos) ---
+  cobrador_id     Int?         // Quién recibió el dinero (Tienda 1, 2 o Cobrador)
+  corte_id        Int?         // Vinculado al reporte de entrega de dinero
+  
+  // Relaciones
+  cliente         Clientes     @relation(fields: [cliente_id], references: [id])
+  corte           Cortes_Caja? @relation(fields: [corte_id], references: [id])
+}
+model Cortes_Caja {
+  id                Int      @id @default(autoincrement())
+  usuario_identificador String   // Nombre o ID de la tienda/cobrador (ej: "Tienda Centro")
+  monto_esperado    Decimal  @db.Decimal(10, 2)
+  monto_entregado   Decimal  @db.Decimal(10, 2)
+  diferencia        Decimal  @db.Decimal(10, 2)
+  fecha_corte       DateTime @default(now())
+  observaciones     String?
+  
+  // Un corte agrupa muchos pagos
+  pagos             Pagos[]
+}
 model Clientes {
   id                 Int         @id @default(autoincrement())
   nombre_completo    String
@@ -23,23 +55,7 @@ model Clientes {
   pagos   Pagos[]
   tickets Tickets_Soporte[]
 }
-model Pagos {
-id              Int      @id @default(autoincrement())
-  cliente_id      Int
-  monto           Decimal  @db.Decimal(10, 2)
-  fecha_pago      DateTime @default(now())
-  metodo_pago     String   
-  
-  // Usaremos formato "YYYY-MM" (ej: "2026-04")
-  mes_cubierto    String   
-  
-  // Opcional: Una fecha real del primer día del mes para cálculos matemáticos
-  periodo_inicio  DateTime? 
-  
-  referencia      String?  
-  notas           String?
-  cliente         Clientes @relation(fields: [cliente_id], references: [id])
-}
+
 model Domicilios {
   id                 Int        @id @default(autoincrement())
   cliente_id         Int
