@@ -1,7 +1,13 @@
 const { listarClientesActivos, registrarInstalacion } = require('./src/services/clienteService');
 const { buscarCliente } = require('./src/services/busquedaService');
 const { abrirTicket, cerrarTicket } = require('./src/services/ticketService');
-const { registrarPagosDinamicos, generarReporteCobranza } = require('./src/services/pagoService');
+const { 
+    registrarPagosDinamicos, 
+    generarReporteCobranza, 
+    realizarCorteCobrador,
+	obtenerResumenCajaPendiente
+	// ✅ La importamos aquí
+} = require('./src/services/pagoService');
 const prisma = require('./src/db');
 async function testArquitecturaModular() {
     console.log("🧪 INICIANDO PRUEBAS DE SISTEMA MODULAR\n");

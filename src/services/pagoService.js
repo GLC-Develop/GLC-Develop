@@ -1,4 +1,6 @@
 const prisma = require('../db');
+const { addMonths, startOfMonth, format } = require('date-fns');
+
 async function registrarPagosDinamicos(clienteId, montoRecibido, metodo, cobradorId = null) {
     console.log(`\n💰 Procesando pago de $${montoRecibido} para Cliente ID: ${clienteId}...`);
 
@@ -139,11 +141,56 @@ async function realizarCorteCobrador(cobradorId) {
         console.error("❌ Error al realizar el corte:", error.message);
     }
 }
+async function obtenerResumenCajaPendiente() {
+    console.log("\n💰 --- RESUMEN DE EFECTIVO POR LIQUIDAR ---");
+
+    try {
+        // Buscamos pagos que no han pasado por un proceso de corte
+        const pagosPendientes = await prisma.pagos.findMany({
+            where: { corte_id: null },
+            select: {
+                monto: true,
+                cobrador_id: true,
+            }
+        });
+
+        if (pagosPendientes.length === 0) {
+            console.log("✅ No hay efectivo pendiente de recolección en los puntos de cobro.");
+            return [];
+        }
+
+        // Agrupamos el dinero por cada cobrador_id
+        const resumen = pagosPendientes.reduce((acc, pago) => {
+            const id = pago.cobrador_id || "Sin Asignar";
+            if (!acc[id]) {
+                acc[id] = { cobrador_id: id, total: 0, cantidad_pagos: 0 };
+            }
+            acc[id].total += Number(pago.monto);
+            acc[id].cantidad_pagos += 1;
+            return acc;
+        }, {});
+
+        const tablaResumen = Object.values(resumen);
+        
+        console.table(tablaResumen.map(r => ({
+            "Punto de Cobro": r.cobrador_id,
+            "Total en Caja": new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(r.total),
+            "Tickets": r.cantidad_pagos
+        })));
+
+        return tablaResumen;
+
+    } catch (error) {
+        console.error("❌ Error al generar reporte de liquidación:", error.message);
+        throw error;
+    }
+}
 // Exportamos ambas funciones
 module.exports = { 
     registrarPagosDinamicos, 
     generarReporteCobranza,
-    realizarCorteCobrador // <-- Nueva función agregada
+    realizarCorteCobrador,
+	obtenerResumenCajaPendiente // <-- Agregada
 };
 
 

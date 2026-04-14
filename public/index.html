@@ -23,9 +23,62 @@
 
         <div id="resultados" class="space-y-4">
             </div>
+		<div class="mt-10 bg-white p-6 rounded-lg shadow-lg border-t-4 border-blue-600">
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        📊 Resumen de Cajas por Liquidar
+    </h2>
+    <div id="listaCajas" class="space-y-4">
+        </div>
+</div>
     </main>
 
     <script>
+	async function cargarResumenCajas() {
+    const res = await fetch('/api/reporte-liquidaciones');
+    const resumen = await res.json();
+    const contenedor = document.getElementById('listaCajas');
+    contenedor.innerHTML = '';
+
+    resumen.forEach(c => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center p-3 bg-gray-50 rounded border";
+        div.innerHTML = `
+            <div>
+                <p class="font-bold text-gray-700">Punto: ${c.cobrador_id}</p>
+                <p class="text-sm text-gray-500">${c.cantidad_pagos} tickets pendientes</p>
+            </div>
+            <div class="text-right">
+                <p class="text-lg font-bold text-blue-600">$${c.total.toFixed(2)}</p>
+                <button onclick="liquidarCaja(${c.cobrador_id}, ${c.total})" 
+                        class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                    Liquidar
+                </button>
+            </div>
+        `;
+        contenedor.appendChild(div);
+    });
+}
+
+async function liquidarCaja(id, totalEsperado) {
+    const monto = prompt(`¿Cuánto efectivo estás recibiendo del Punto ${id}?`, totalEsperado);
+    if (monto !== null) {
+        const res = await fetch('/api/liquidar-caja', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                cobradorId: id, 
+                montoEntregado: parseFloat(monto),
+                observaciones: "Cierre de quincena"
+            })
+        });
+        const data = await res.json();
+        alert(data.mensaje);
+        cargarResumenCajas(); // Recargar la lista
+    }
+}
+
+// Llamar al cargar al inicio
+cargarResumenCajas();
         async function buscar() {
             const criterio = document.getElementById('inputBusqueda').value;
             const res = await fetch(`/api/buscar?criterio=${criterio}`);

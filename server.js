@@ -7,7 +7,8 @@ const { buscarCliente } = require('./src/services/busquedaService');
 const { 
     registrarPagosDinamicos, 
     generarReporteCobranza, 
-    realizarCorteCobrador // ✅ La importamos aquí
+    realizarCorteCobrador,
+obtenerResumenCajaPendiente	// ✅ La importamos aquí
 } = require('./src/services/pagoService');
 
 app.use(express.json()); // Para que el servidor entienda datos en formato JSON
@@ -32,6 +33,27 @@ app.post('/api/pagar', async (req, res) => {
     try {
         const resultado = await registrarPagosDinamicos(clienteId, monto, metodo, parseInt(cobradorId));
         res.json({ mensaje: "Pago procesado y asignado al cobrador", detalle: resultado });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/reporte-liquidaciones', async (req, res) => {
+    try {
+        const resumen = await obtenerResumenCajaPendiente();
+        res.json(resumen);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// En server.js para hacer el corte de caja al cobrador
+app.post('/api/liquidar-caja', async (req, res) => {
+    const { cobradorId, montoEntregado, observaciones } = req.body;
+    try {
+        // Llamamos a la función que ya tenemos en el servicio
+        const resultado = await realizarCorteCobrador(cobradorId, montoEntregado, observaciones);
+        res.json({ mensaje: "Liquidación completada con éxito", corte: resultado });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
