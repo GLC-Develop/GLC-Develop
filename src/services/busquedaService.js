@@ -55,7 +55,7 @@ async function buscarCliente(criterio) {
             -------------------------------------------
             `);
         });
-
+		return resultados;
     } catch (error) {
         console.error("❌ Error en la búsqueda:", error.message);
     }

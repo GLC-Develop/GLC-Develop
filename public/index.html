@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cobros WISP - Punto de Venta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-600 p-4 text-white shadow-lg text-center font-bold text-xl">
+        📡 ERP-Wisp: Punto de Cobro
+    </nav>
+
+    <main class="max-w-md mx-auto p-4">
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <label class="block text-gray-700 font-bold mb-2">Buscar Cliente (Nombre o IP)</label>
+            <div class="flex gap-2">
+                <input type="text" id="inputBusqueda" placeholder="Ej: 192.168.100..." 
+                       class="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="buscar()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">🔍</button>
+            </div>
+        </div>
+
+        <div id="resultados" class="space-y-4">
+            </div>
+    </main>
+
+    <script>
+        async function buscar() {
+            const criterio = document.getElementById('inputBusqueda').value;
+            const res = await fetch(`/api/buscar?criterio=${criterio}`);
+            const clientes = await res.json();
+            const formatoMoneda = new Intl.NumberFormat('es-MX', { 
+				style: 'currency', 
+				currency: 'MXN' 
+			});
+            const contenedor = document.getElementById('resultados');
+            contenedor.innerHTML = '';
+
+            clientes.forEach(c => {
+                const serv = c.domicilios[0].servicios[0];
+                const div = document.createElement('div');
+                div.className = "bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500";
+                div.innerHTML = `
+                    <h3 class="font-bold text-lg">${c.nombre_completo}</h3>
+                    <p class="text-gray-600 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
+                    <p class="text-blue-600 font-mono text-sm">🌐 IP: ${serv.ip_interna}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded">
+                        <span class="text-sm text-gray-500">Mensualidad:</span>
+                        <span class="block text-2xl font-bold text-gray-800">${formatoMoneda.format(serv.precio_mensual)}</span>
+                    </div>
+                    <button onclick="abrirModalPago(${c.id}, ${serv.precio_mensual})" 
+                            class="w-full mt-4 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">
+                        Registrar Pago
+                    </button>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        async function abrirModalPago(id, monto) {
+		const formatoMoneda = new Intl.NumberFormat('es-MX', { 
+        style: 'currency', 
+        currency: 'MXN' 
+		});
+            const confirmacion = confirm(`¿Confirmar cobro de ${formatoMoneda.format(monto)}?`);
+            if (confirmacion) {
+                const res = await fetch('/api/pagar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clienteId: id, monto: monto, metodo: "Efectivo" })
+                });
+                const data = await res.json();
+                alert(data.mensaje);
+                buscar(); // Refrescar
+            }
+        }
+    </script>
+</body>
+</html>
