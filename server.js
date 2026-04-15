@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const port = 3000;
+const prisma = require('./src/db');
 
 // Importamos los servicios que ya tenemos listos
 const { buscarCliente } = require('./src/services/busquedaService');
@@ -33,6 +34,26 @@ app.post('/api/pagar', async (req, res) => {
     try {
         const resultado = await registrarPagosDinamicos(clienteId, monto, metodo, parseInt(cobradorId));
         res.json({ mensaje: "Pago procesado y asignado al cobrador", detalle: resultado });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// En server.js
+// server.js
+app.get('/api/ticket/:pagoId', async (req, res) => {
+    try {
+        const pago = await prisma.pagos.findUnique({
+            where: { id: parseInt(req.params.pagoId) },
+            include: { 
+                cliente: true // <--- ESTO ES VITAL: Trae los datos del cliente vinculados al pago
+            }
+        });
+
+        if (!pago) {
+            return res.status(404).json({ error: "Pago no encontrado" });
+        }
+
+        res.json(pago);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

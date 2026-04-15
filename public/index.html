@@ -30,6 +30,20 @@
     <div id="listaCajas" class="space-y-4">
         </div>
 </div>
+<div id="modalTicket" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm p-6 rounded-lg shadow-xl font-mono text-sm">
+        <div class="text-center border-b pb-4 mb-4">
+            <h2 class="text-xl font-bold">📡 MI WISP</h2>
+            <p>Comprobante de Pago</p>
+        </div>
+        <div id="detalleTicket">
+            </div>
+        <div class="mt-6 flex gap-2">
+            <button onclick="cerrarTicket()" class="flex-1 bg-gray-200 py-2 rounded">Cerrar</button>
+            <button onclick="window.print()" class="flex-1 bg-blue-600 text-white py-2 rounded">Imprimir</button>
+        </div>
+    </div>
+</div>
     </main>
 
     <script>
@@ -112,22 +126,67 @@ cargarResumenCajas();
         }
 
         async function abrirModalPago(id, monto) {
-		const formatoMoneda = new Intl.NumberFormat('es-MX', { 
+    const formatoMoneda = new Intl.NumberFormat('es-MX', { 
         style: 'currency', 
         currency: 'MXN' 
-		});
-            const confirmacion = confirm(`¿Confirmar cobro de ${formatoMoneda.format(monto)}?`);
-            if (confirmacion) {
-                const res = await fetch('/api/pagar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clienteId: id, monto: monto, metodo: "Efectivo" })
-                });
-                const data = await res.json();
-                alert(data.mensaje);
-                buscar(); // Refrescar
-            }
+    });
+
+    const confirmacion = confirm(`¿Confirmar cobro de ${formatoMoneda.format(monto)}?`);
+    
+    if (confirmacion) {
+        const res = await fetch('/api/pagar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                clienteId: id, 
+                monto: monto, 
+                metodo: "Efectivo",
+                cobradorId: 100 // Asegúrate de pasar un ID de cobrador válido
+            })
+        });
+
+        const data = await res.json();
+        alert(data.mensaje);
+
+        // ✅ LA CLAVE: Llamamos a la función de mostrar ticket con el ID que nos dio el servidor
+        // Como registrarPagosDinamicos devuelve un array, tomamos el primer pago [0]
+        if (data.detalle && data.detalle.length > 0) {
+            mostrarTicket(data.detalle[0].id);
+        } else if (data.detalle && data.detalle.id) {
+            mostrarTicket(data.detalle.id);
         }
+
+        buscar(); // Refrescar la lista de atrás
+    }
+}
+
+// ✅ Función separada (Fuera de abrirModalPago)
+async function mostrarTicket(pagoId) {
+    const res = await fetch(`/api/ticket/${pagoId}`);
+    const pago = await res.json();
+    
+    const detalle = document.getElementById('detalleTicket');
+    // En index.html dentro de mostrarTicket
+detalle.innerHTML = `
+    <p class="flex justify-between"><span>Folio:</span> <b>#${pago.id}</b></p>
+    <p class="flex justify-between"><span>Fecha:</span> <b>${new Date(pago.fecha_pago).toLocaleString()}</b></p>
+    <hr class="my-2 border-dashed">
+    
+    <p class="font-bold text-lg uppercase">${pago.cliente?.nombre_completo || 'CLIENTE DESCONOCIDO'}</p>
+    
+    <p class="flex justify-between"><span>Mes cubierto:</span> <b>${pago.mes_cubierto}</b></p>
+    <hr class="my-2 border-dashed">
+    <p class="flex justify-between text-xl font-bold"><span>TOTAL:</span> <span>$${pago.monto}</span></p>
+    <p class="mt-4 text-center text-xs text-gray-500 italic">¡Gracias por tu pago!</p>
+`;
+    document.getElementById('modalTicket').classList.remove('hidden');
+}
+
+// ✅ Función separada
+function cerrarTicket() {
+    document.getElementById('modalTicket').classList.add('hidden');
+    // location.reload(); // Opcional: puedes quitarlo si solo quieres ocultar el modal
+}
     </script>
 </body>
 </html>
