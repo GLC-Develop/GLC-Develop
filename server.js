@@ -68,6 +68,36 @@ app.get('/api/reporte-liquidaciones', async (req, res) => {
     }
 });
 
+const clienteService = require('./src/services/clienteService');
+
+app.post('/api/instalacion', async (req, res) => {
+    try {
+        const resultado = await clienteService.registrarInstalacion(req.body);
+        res.status(201).json({ mensaje: "¡Éxito!", cliente: resultado });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+const ticketService = require('./src/services/ticketService');
+
+app.post('/api/tickets', async (req, res) => {
+    try {
+        const { cliente_id, titulo, descripcion, prioridad } = req.body;
+        
+        // Usamos tu función existente de ticketService.js
+        const ticket = await ticketService.abrirTicket(
+            parseInt(cliente_id), 
+            titulo, 
+            descripcion, 
+            prioridad
+        );
+        
+        res.status(201).json({ mensaje: "Ticket abierto correctamente", ticket });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // En server.js para hacer el corte de caja al cobrador
 app.post('/api/liquidar-caja', async (req, res) => {
     const { cobradorId, montoEntregado, observaciones } = req.body;

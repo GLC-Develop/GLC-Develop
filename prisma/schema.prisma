@@ -30,6 +30,19 @@ model Pagos {
   // Relaciones
   cliente         Clientes     @relation(fields: [cliente_id], references: [id])
   corte           Cortes_Caja? @relation(fields: [corte_id], references: [id])
+  usuario_id    Int?     // Quién registró el pago
+  usuario       Usuarios? @relation(fields: [usuario_id], references: [id])
+}
+model Usuarios {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // En el futuro usaremos bcrypt
+  rol       String   // "ADMIN", "POS", "TECH"
+  nombre    String
+  activo    Boolean  @default(true)
+  
+  // Relación con los cortes de caja que este usuario genera
+  cortes    Cortes_Caja[] 
 }
 model Cortes_Caja {
   id                Int      @id @default(autoincrement())

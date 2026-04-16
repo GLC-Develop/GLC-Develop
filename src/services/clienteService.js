@@ -35,32 +35,41 @@ async function registrarInstalacion(datos) {
     try {
         const nuevo = await prisma.clientes.create({
             data: {
-                nombre_completo: datos.nombre,
-                telefono_principal: datos.telefono,
-                email: datos.email,
+                nombre_completo: datos.nombre_completo,
+                telefono_principal: datos.telefono || "0000000000",
+                email: datos.email || "",
                 domicilios: {
                     create: {
-                        direccion_exacta: datos.direccion,
-                        colonia: datos.colonia,
-                        referencias: datos.referencias,
-                        dia_pago_mensual: datos.diaPago,
-                        servicios: {
+                        direccion_exacta: datos.calle,
+                        colonia: datos.colonia || "General",
+                        referencias: datos.referencias || "",
+                        dia_pago_mensual: 5, // Valor por defecto
+                        servicios: { // 👈 Nombre exacto en tu modelo Domicilios
                             create: {
-                                ip_interna: datos.ip,
-                                megas_bajada: datos.bajada,
-                                megas_subida: datos.subida,
-                                precio_mensual: datos.precio
+                                ip_interna: datos.ip_antena,
+                                megas_bajada: parseInt(datos.bajada) || 10,
+                                megas_subida: parseInt(datos.subida) || 5,
+                                precio_mensual: parseFloat(datos.precio) || 400.00,
+                                tipo_servicio: datos.tipo_tecnologia || "WISP",
+                                equipos: { // 👈 Nombre exacto en tu modelo Servicios_Red
+                                    create: datos.equipos.map(e => ({
+                                        tipo_equipo: e.tipo_equipo,
+                                        marca: e.marca,
+                                        modelo: e.modelo,
+                                        mac: e.mac,
+                                        serie: e.serie || ""
+                                    }))
+                                }
                             }
                         }
                     }
                 }
             }
         });
-        console.log(`✅ Instalación registrada exitosamente. ID: ${nuevo.id}`);
         return nuevo;
     } catch (error) {
-        console.error("❌ Error en registro de instalación:", error.message);
+        console.error("❌ Error en registro de instalación:", error);
+        throw error;
     }
 }
-
 module.exports = { listarClientesActivos, registrarInstalacion };

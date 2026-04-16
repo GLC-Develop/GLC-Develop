@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Técnico | ERP-Wisp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-zinc-900 min-h-screen text-zinc-100">
+
+    <nav class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 sticky top-0 z-40">
+        <span class="font-bold text-orange-500 flex items-center gap-2">🛠️ Panel de Campo</span>
+        <a href="/pos.html" class="text-xs text-zinc-400 bg-zinc-800 px-3 py-1 rounded-full border border-zinc-700">Salir</a>
+    </nav>
+
+    <main class="p-4 space-y-6 max-w-2xl mx-auto">
+        <button onclick="abrirInstalacion()" class="w-full bg-orange-600 p-8 rounded-[2.5rem] flex flex-col items-center gap-3 shadow-lg shadow-orange-900/20 active:scale-95 transition-all">
+            <span class="text-4xl">🏠</span>
+            <span class="font-bold text-lg">Nueva Instalación</span>
+            <p class="text-orange-200 text-xs">Registrar cliente, red y equipos</p>
+        </button>
+
+        <div class="bg-zinc-800 rounded-3xl p-6 border border-zinc-700">
+            <h2 class="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-center">Tareas del día</h2>
+            <p class="text-zinc-500 text-center py-4 text-sm italic opacity-50">No hay órdenes de soporte pendientes.</p>
+        </div>
+
+        <div id="modalInstalacion" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="bg-zinc-800 w-full max-w-lg rounded-[2.5rem] p-6 border border-zinc-700 max-h-[92vh] overflow-y-auto shadow-2xl">
+                
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-orange-500">Formulario de Alta</h3>
+                    <button onclick="cerrarInstalacion()" class="text-zinc-500 hover:text-white text-2xl">&times;</button>
+                </div>
+                
+                <form id="formInstalacion" class="space-y-6">
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Datos del Cliente</label>
+                        <input type="text" name="nombre_completo" placeholder="Nombre Completo" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none focus:ring-2 focus:ring-orange-500">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" name="telefono" placeholder="Teléfono (10 dígitos)" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                            <input type="email" name="email" placeholder="Correo (Opcional)" class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ubicación</label>
+                        <input type="text" name="calle" placeholder="Calle y Número" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                        <input type="text" name="colonia" placeholder="Colonia o Barrio" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                        <textarea name="referencias" placeholder="Referencias de la casa" class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white text-sm outline-none h-20"></textarea>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Plan y Red</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" name="ip_antena" placeholder="IP Asignada" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                            <input type="number" name="precio" placeholder="Costo Mensual" value="400" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="number" name="bajada" placeholder="Megas Bajada" value="10" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                            <input type="number" name="subida" placeholder="Megas Subida" value="5" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 bg-zinc-900/40 p-4 rounded-[2rem] border border-zinc-700">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[10px] text-orange-500 font-bold uppercase">Inventario Instalado</label>
+                            <button type="button" onclick="agregarFilaEquipo()" class="text-[10px] bg-orange-600/20 text-orange-500 px-3 py-1 rounded-full border border-orange-500/40 font-bold hover:bg-orange-600 hover:text-white transition-all">
+                                + AÑADIR EQUIPO
+                            </button>
+                        </div>
+                        <div id="contenedorEquipos" class="space-y-3"></div>
+                    </div>
+
+                    <div class="pt-6 flex gap-4">
+                        <button type="button" onclick="cerrarInstalacion()" class="flex-1 py-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Cerrar</button>
+                        <button type="submit" id="btnGuardar" class="flex-1 bg-orange-600 py-4 rounded-2xl font-bold text-white text-xs uppercase tracking-widest shadow-xl shadow-orange-900/40 active:scale-95 transition-all">
+                            REGISTRAR TODO
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+		<button onclick="document.getElementById('modalTicket').classList.remove('hidden')" class="bg-zinc-800 p-6 rounded-3xl flex flex-col items-center gap-2 border border-zinc-700 active:scale-95 transition-all">
+    <span class="text-3xl">🎫</span>
+    <span class="font-bold text-sm tracking-wide">Tickets</span>
+</button>
+<div id="modalTicket" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-zinc-800 w-full max-w-lg rounded-[2.5rem] p-6 border border-zinc-700 shadow-2xl">
+        <h3 class="text-xl font-bold text-blue-400 mb-6">🎫 Reportar Problema</h3>
+        <form id="formTicket" class="space-y-4">
+            <input type="number" name="cliente_id" placeholder="ID del Cliente" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+            
+            <input type="text" name="titulo" placeholder="Ej: Falla de señal / Router quemado" required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+
+            <select name="prioridad" class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white outline-none">
+                <option value="baja">Baja</option>
+                <option value="media" selected>Media</option>
+                <option value="alta">Alta</option>
+                <option value="critica">Crítica</option>
+            </select>
+
+            <textarea name="descripcion" placeholder="Escribe aquí los detalles técnicos..." required class="w-full bg-zinc-900 border-zinc-700 rounded-2xl p-4 text-white h-32 outline-none"></textarea>
+
+            <div class="flex gap-4">
+                <button type="button" onclick="document.getElementById('modalTicket').classList.add('hidden')" class="flex-1 py-4 text-zinc-500 font-bold uppercase text-xs">Cerrar</button>
+                <button type="submit" class="flex-1 bg-blue-600 py-4 rounded-2xl font-bold text-white text-xs uppercase shadow-xl shadow-blue-900/40">Abrir Ticket</button>
+            </div>
+        </form>
+    </div>
+</div>
+    </main>
+
+    <script>
+        function abrirInstalacion() { document.getElementById('modalInstalacion').classList.remove('hidden'); }
+        function cerrarInstalacion() { document.getElementById('modalInstalacion').classList.add('hidden'); }
+
+        function agregarFilaEquipo() {
+            const id = Date.now();
+            const fila = `
+                <div id="equipo-${id}" class="grid grid-cols-2 gap-2 p-3 bg-zinc-800/80 rounded-2xl border border-zinc-700 relative">
+                    <select name="tipo_equipo" class="bg-zinc-900 border-zinc-700 rounded-xl p-2 text-xs text-white">
+                        <option value="Antena">Antena (CPE)</option>
+                        <option value="Router">Router WiFi</option>
+                        <option value="Mesh">Nodo Mesh</option>
+                    </select>
+                    <input type="text" name="marca_modelo" placeholder="Marca/Modelo" required class="bg-zinc-900 border-zinc-700 rounded-xl p-2 text-xs text-white">
+                    <input type="text" name="mac_equipo" placeholder="MAC (00:00...)" required class="bg-zinc-900 border-zinc-700 rounded-xl p-2 text-xs text-white">
+                    <input type="text" name="serie_equipo" placeholder="S/N" class="bg-zinc-900 border-zinc-700 rounded-xl p-2 text-xs text-white">
+                    <button type="button" onclick="document.getElementById('equipo-${id}').remove()" class="absolute -top-1 -right-1 bg-zinc-700 text-white rounded-full w-5 h-5 text-xs">×</button>
+                </div>
+            `;
+            document.getElementById('contenedorEquipos').insertAdjacentHTML('beforeend', fila);
+        }
+
+        window.onload = () => { agregarFilaEquipo(); };
+
+        document.getElementById('formInstalacion').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardar');
+            btn.disabled = true;
+            btn.innerText = "ENVIANDO A SISTEMA...";
+
+            const formData = new FormData(e.target);
+            const datosBase = Object.fromEntries(formData);
+
+            // Estructuramos los equipos en el formato que espera el Backend
+            const tipos = formData.getAll('tipo_equipo');
+            const modelos = formData.getAll('marca_modelo');
+            const macs = formData.getAll('mac_equipo');
+            const series = formData.getAll('serie_equipo');
+
+            const equipos = tipos.map((tipo, i) => ({
+                tipo_equipo: tipo,
+                marca: modelos[i].split(' ')[0] || 'Genérico',
+                modelo: modelos[i],
+                mac: macs[i],
+                serie: series[i]
+            }));
+
+            // Payload final unificado para ClienteService
+            const payload = { ...datosBase, equipos };
+
+            try {
+                const res = await fetch('/api/instalacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const resultado = await res.json();
+
+                if (res.ok) {
+                    alert("✅ Instalación registrada en ClienteService correctamente.");
+                    e.target.reset();
+                    document.getElementById('contenedorEquipos').innerHTML = '';
+                    agregarFilaEquipo();
+                    cerrarInstalacion();
+                } else {
+                    alert("❌ Error del Servidor: " + (resultado.error || "No se pudo guardar"));
+                }
+            } catch (err) {
+                alert("❌ Error de red: El servidor no responde");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "REGISTRAR TODO";
+            }
+        };
+		document.getElementById('formTicket').onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const datos = Object.fromEntries(formData);
+
+    try {
+        const res = await fetch('/api/tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        if (res.ok) {
+            alert("✅ Ticket generado. Se ha notificado al sistema.");
+            e.target.reset();
+            document.getElementById('modalTicket').classList.add('hidden');
+        } else {
+            const err = await res.json();
+            alert("❌ Error: " + err.error);
+        }
+    } catch (err) {
+        alert("❌ Error de conexión");
+    }
+};
+    </script>
+</body>
+</html>
