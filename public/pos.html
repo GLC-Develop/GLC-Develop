@@ -3,171 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GC-Connecting</title>
+    <title>GC-Connecting | Terminal POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .card-neo { @apply bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden; }
     </style>
 </head>
-<body class="bg-[#f0f4f8] min-h-screen">
-    <nav class="bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] p-5 text-white shadow-2xl sticky top-0 z-50">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <span class="font-bold text-xl tracking-tight flex items-center gap-2">
-                <span class="bg-white/20 p-1.5 rounded-lg">📡</span> ERP-Wisp
-            </span>
-            <span class="text-xs bg-blue-400/30 px-2 py-1 rounded uppercase tracking-widest border border-white/20">POS v1.0</span>
+<body class="bg-slate-50 min-h-screen">
+
+    <nav class="bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold" id="inicialUsuario">U</div>
+            <div class="text-xs">
+                <p class="font-bold text-blue-400" id="displayNombre">Cargando...</p>
+                <p class="opacity-50" id="displaySesion">Sesión #0</p>
+            </div>
         </div>
+        <button onclick="cerrarSesion()" class="bg-slate-800 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-red-900/40 transition-all">SALIR 🔒</button>
     </nav>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
+    <main class="max-w-5xl mx-auto p-4 lg:p-8 space-y-6">
         
-        <div class="bg-[#1e293b] p-6 rounded-2xl shadow-2xl border border-slate-700">
-            <label class="block text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">Búsqueda de Cliente</label>
-            <div class="flex gap-2">
-                <input type="text" id="inputBusqueda" placeholder="Nombre, IP o ID..." 
-                       class="flex-1 bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-500">
-                <button onclick="buscar()" class="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl shadow-lg shadow-blue-900/20 transition-all active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </button>
+        <div class="card-neo p-6 bg-slate-900 border-none shadow-blue-900/20">
+            <div class="flex gap-3">
+                <input type="text" id="inputBusqueda" placeholder="Buscar por Nombre, IP o ID..." 
+                       onkeypress="if(event.key==='Enter') buscar()"
+                       class="flex-1 bg-slate-800 border-none text-white rounded-2xl px-6 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                <button onclick="buscar()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 rounded-2xl font-bold transition-all active:scale-95">BUSCAR</button>
             </div>
         </div>
 
-        <div id="resultados" class="space-y-4">
+        <div id="areaTrabajo" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <div class="space-y-6">
+                <div class="card-neo p-8">
+                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Información del Cliente</h2>
+                    <div id="infoCliente"></div>
+                </div>
+
+                <div class="card-neo p-8">
+                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Últimos Pagos Registrados</h2>
+                    <div id="historialPagos" class="space-y-3">
+                        </div>
+                </div>
             </div>
 
-       
+            <div class="space-y-6">
+                <div class="card-neo p-8 border-2 border-blue-100">
+                    <h2 class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-6">Calculadora de Abono</h2>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-slate-50 p-6 rounded-3xl">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Monto a recibir</label>
+                            <input type="number" id="montoAbono" oninput="calcularMeses()"
+                                   class="w-full bg-transparent text-4xl font-black text-slate-800 outline-none mt-2">
+                        </div>
+
+                        <div id="feedbackCobro" class="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold text-blue-400 uppercase">Meses a cubrir</p>
+                                <p class="text-2xl font-black text-blue-700" id="labelMeses">0 meses</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] font-bold text-blue-400 uppercase">Costo Mensual</p>
+                                <p class="text-lg font-bold text-slate-600" id="labelCostoUnitario">$0.00</p>
+                            </div>
+                        </div>
+
+                        <button onclick="confirmarYProcesar()" id="btnCobrar"
+                                class="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-blue-900/20 active:scale-95">
+                            Registrar Abono
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </main>
 
-    <div id="modalTicket" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden transform transition-all scale-100">
-            <div class="bg-blue-600 p-6 text-center text-white">
-                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span class="text-3xl">📡</span>
-                </div>
-                <h2 class="text-xl font-bold tracking-tight">Recibo de Pago</h2>
-                <p class="text-blue-100 text-xs uppercase tracking-widest mt-1">Conectividad Garantizada</p>
-            </div>
-            
-            <div id="detalleTicket" class="p-8 font-mono text-slate-700 text-sm leading-relaxed">
-                </div>
-
-            <div class="p-6 bg-slate-50 border-t flex gap-3">
-                <button onclick="cerrarTicket()" class="flex-1 bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors">Cerrar</button>
-                <button onclick="window.print()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">Imprimir</button>
-            </div>
+    <div id="modalTicket" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl p-8">
+            <div id="detalleTicket"></div>
+            <button onclick="cerrarTicket()" class="w-full mt-6 bg-slate-100 py-4 rounded-2xl font-bold">Cerrar</button>
         </div>
     </div>
 
-</body>
-
-
     <script>
-	
-	
+        let clienteActual = null;
+        let costoMensualGlobal = 0;
 
+        window.onload = () => {
+            const nombre = localStorage.getItem('usuario_nombre');
+            const sesionId = localStorage.getItem('sesion_id');
+            if (!nombre || !sesionId) window.location.href = "/login.html";
+            
+            document.getElementById('displayNombre').innerText = nombre;
+            document.getElementById('displaySesion').innerText = "Sesión: #" + sesionId;
+            document.getElementById('inicialUsuario').innerText = nombre.charAt(0);
+        };
 
-
-
-// Llamar al cargar al inicio
-cargarResumenCajas();
         async function buscar() {
             const criterio = document.getElementById('inputBusqueda').value;
             const res = await fetch(`/api/buscar?criterio=${criterio}`);
             const clientes = await res.json();
-            const formatoMoneda = new Intl.NumberFormat('es-MX', { 
-				style: 'currency', 
-				currency: 'MXN' 
-			});
-            const contenedor = document.getElementById('resultados');
-            contenedor.innerHTML = '';
 
-            clientes.forEach(c => {
-                const serv = c.domicilios[0].servicios[0];
-                const div = document.createElement('div');
-                div.className = "bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500";
-                div.innerHTML = `
-                    <h3 class="font-bold text-lg">${c.nombre_completo}</h3>
-                    <p class="text-gray-600 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
-                    <p class="text-blue-600 font-mono text-sm">🌐 IP: ${serv.ip_interna}</p>
-                    <div class="mt-4 p-3 bg-gray-50 rounded">
-                        <span class="text-sm text-gray-500">Mensualidad:</span>
-                        <span class="block text-2xl font-bold text-gray-800">${formatoMoneda.format(serv.precio_mensual)}</span>
-                    </div>
-                    <button onclick="abrirModalPago(${c.id}, ${serv.precio_mensual})" 
-                            class="w-full mt-4 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">
-                        Registrar Pago
-                    </button>
-                `;
-                contenedor.appendChild(div);
+            if (clientes.length > 0) {
+                const c = clientes[0]; // Tomamos el primer resultado
+                clienteActual = c;
+                costoMensualGlobal = Number(c.domicilios[0].servicios[0].precio_mensual);
+                
+                document.getElementById('areaTrabajo').classList.remove('hidden');
+                mostrarDatosCliente(c);
+                document.getElementById('montoAbono').value = costoMensualGlobal;
+                calcularMeses();
+            } else {
+                alert("Cliente no encontrado");
+            }
+        }
+
+        function mostrarDatosCliente(c) {
+            const serv = c.domicilios[0].servicios[0];
+            document.getElementById('infoCliente').innerHTML = `
+                <h3 class="text-2xl font-black text-slate-800">${c.nombre_completo}</h3>
+                <p class="text-slate-500 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
+                <div class="mt-4 flex gap-2">
+                    <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">IP: ${serv.ip_interna}</span>
+                    <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${c.estatus}</span>
+                </div>
+            `;
+            document.getElementById('labelCostoUnitario').innerText = `$${costoMensualGlobal}`;
+            
+            // Aquí simularíamos traer el historial. En producción haz un fetch a /api/pagos/cliente/${c.id}
+            document.getElementById('historialPagos').innerHTML = `
+                <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center opacity-50">
+                    <span class="text-xs font-bold">Cargando historial...</span>
+                </div>
+            `;
+        }
+
+        function calcularMeses() {
+            const monto = document.getElementById('montoAbono').value;
+            const meses = Math.floor(monto / costoMensualGlobal);
+            const label = document.getElementById('labelMeses');
+            
+            if (meses > 0) {
+                label.innerText = `${meses} mes${meses > 1 ? 'es' : ''}`;
+                label.classList.replace('text-red-500', 'text-blue-700');
+            } else {
+                label.innerText = "Monto insuficiente";
+                label.classList.replace('text-blue-700', 'text-red-500');
+            }
+        }
+
+        async function confirmarYProcesar() {
+            const monto = document.getElementById('montoAbono').value;
+            const meses = Math.floor(monto / costoMensualGlobal);
+            const sesionId = localStorage.getItem('sesion_id');
+
+            if (meses <= 0) return alert("El monto no alcanza para cubrir un mes.");
+
+            if (!confirm(`¿Registrar abono de $${monto} para cubrir ${meses} mes(es)?`)) return;
+
+            const res = await fetch('/api/pagar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clienteId: clienteActual.id,
+                    monto: parseFloat(monto),
+                    metodo: "Efectivo",
+                    sesionId: parseInt(sesionId)
+                })
             });
+
+            const data = await res.json();
+            if (res.ok) {
+                const pagoId = Array.isArray(data.detalle) ? data.detalle[0].id : data.detalle.id;
+                mostrarTicket(pagoId);
+            }
         }
 
-        async function abrirModalPago(id, monto) {
-    const formatoMoneda = new Intl.NumberFormat('es-MX', { 
-        style: 'currency', 
-        currency: 'MXN' 
-    });
-
-    const confirmacion = confirm(`¿Confirmar cobro de ${formatoMoneda.format(monto)}?`);
-    
-    if (confirmacion) {
-        const res = await fetch('/api/pagar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                clienteId: id, 
-                monto: monto, 
-                metodo: "Efectivo",
-                cobradorId: 100 // Asegúrate de pasar un ID de cobrador válido
-            })
-        });
-
-        const data = await res.json();
-        alert(data.mensaje);
-
-        // ✅ LA CLAVE: Llamamos a la función de mostrar ticket con el ID que nos dio el servidor
-        // Como registrarPagosDinamicos devuelve un array, tomamos el primer pago [0]
-        if (data.detalle && data.detalle.length > 0) {
-            mostrarTicket(data.detalle[0].id);
-        } else if (data.detalle && data.detalle.id) {
-            mostrarTicket(data.detalle.id);
+        async function mostrarTicket(pagoId) {
+            const res = await fetch(`/api/ticket/${pagoId}`);
+            const pago = await res.json();
+            document.getElementById('detalleTicket').innerHTML = `
+                <p class="text-center font-bold text-lg mb-4 uppercase">${pago.cliente.nombre_completo}</p>
+                <div class="space-y-2 text-sm font-mono">
+                    <p class="flex justify-between"><span>Folio:</span> <b>#${pago.id}</b></p>
+                    <p class="flex justify-between"><span>Total:</span> <b>$${pago.monto}</b></p>
+                    <p class="flex justify-between"><span>Estatus:</span> <b>PAGADO</b></p>
+                </div>
+            `;
+            document.getElementById('modalTicket').classList.remove('hidden');
         }
 
-        buscar(); // Refrescar la lista de atrás
-    }
-}
-
-// ✅ Función separada (Fuera de abrirModalPago)
-async function mostrarTicket(pagoId) {
-    const res = await fetch(`/api/ticket/${pagoId}`);
-    const pago = await res.json();
-    
-    const detalle = document.getElementById('detalleTicket');
-    // En index.html dentro de mostrarTicket
-detalle.innerHTML = `
-    <p class="flex justify-between"><span>Folio:</span> <b>#${pago.id}</b></p>
-    <p class="flex justify-between"><span>Fecha:</span> <b>${new Date(pago.fecha_pago).toLocaleString()}</b></p>
-    <hr class="my-2 border-dashed">
-    
-    <p class="font-bold text-lg uppercase">${pago.cliente?.nombre_completo || 'CLIENTE DESCONOCIDO'}</p>
-    
-    <p class="flex justify-between"><span>Mes cubierto:</span> <b>${pago.mes_cubierto}</b></p>
-    <hr class="my-2 border-dashed">
-    <p class="flex justify-between text-xl font-bold"><span>TOTAL:</span> <span>$${pago.monto}</span></p>
-    <p class="mt-4 text-center text-xs text-gray-500 italic">¡Gracias por tu pago!</p>
-`;
-    document.getElementById('modalTicket').classList.remove('hidden');
-}
-
-// ✅ Función separada
-function cerrarTicket() {
-    document.getElementById('modalTicket').classList.add('hidden');
-    // location.reload(); // Opcional: puedes quitarlo si solo quieres ocultar el modal
-}
+        function cerrarTicket() { location.reload(); }
+        function cerrarSesion() { localStorage.clear(); window.location.href = "/login.html"; }
     </script>
 </body>
 </html>

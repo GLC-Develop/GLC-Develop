@@ -11,7 +11,15 @@
     </style>
 </head>
 <body class="bg-zinc-900 min-h-screen text-zinc-100">
-
+	<nav class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+        <span class="bg-blue-500/20 text-blue-400 p-2 rounded-lg text-xs font-bold" id="badgeRol">ROL</span>
+        <span class="text-white font-medium" id="displayNombre">Cargando...</span>
+    </div>
+    <button onclick="cerrarSesion()" class="text-xs bg-red-900/20 text-red-400 px-4 py-2 rounded-xl hover:bg-red-900/40 transition-all font-bold uppercase tracking-tighter">
+        Cerrar Sesión 🔒
+    </button>
+</nav>
     <nav class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 sticky top-0 z-40">
         <span class="font-bold text-orange-500 flex items-center gap-2">🛠️ Panel de Campo</span>
         <a href="/pos.html" class="text-xs text-zinc-400 bg-zinc-800 px-3 py-1 rounded-full border border-zinc-700">Salir</a>
@@ -214,6 +222,26 @@
         alert("❌ Error de conexión");
     }
 };
+// Al cargar la página, verificamos si hay sesión
+window.onload = () => {
+    const nombre = localStorage.getItem('usuario_nombre');
+    const rol = localStorage.getItem('usuario_rol');
+
+    if (!nombre) {
+        // Si no hay datos, lo regresamos al login por seguridad
+        window.location.href = "/login.html";
+    } else {
+        document.getElementById('displayNombre').innerText = nombre;
+        document.getElementById('badgeRol').innerText = rol;
+    }
+};
+
+function cerrarSesion() {
+    // Borramos los datos locales
+    localStorage.clear();
+    // Redirigimos al login
+    window.location.href = "/login.html";
+}
     </script>
 </body>
 </html>

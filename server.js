@@ -3,72 +3,37 @@ const app = express();
 const port = 3000;
 const prisma = require('./src/db');
 
-// Importamos los servicios que ya tenemos listos
+// Servicios Unificados
 const { buscarCliente } = require('./src/services/busquedaService');
-const { 
-    registrarPagosDinamicos, 
-    generarReporteCobranza, 
-    realizarCorteCobrador,
-obtenerResumenCajaPendiente	// ✅ La importamos aquí
-} = require('./src/services/pagoService');
+const { registrarPagosDinamicos } = require('./src/services/pagoService');
+const clienteService = require('./src/services/clienteService');
+const ticketService = require('./src/services/ticketService');
+const authService = require('./src/services/authService');
 
-app.use(express.json()); // Para que el servidor entienda datos en formato JSON
+app.use(express.json());
 app.use(express.static('public'));
-// RUTA 1: Buscar cliente (Para el buscador de la tienda)
+
+// --- MÓDULO DE AUTENTICACIÓN & SESIONES ---
+app.post('/api/auth/pos', async (req, res) => {
+    try {
+        const { pin, info } = req.body;
+        const resultado = await authService.iniciarSesionPOS(pin, info);
+        res.json(resultado);
+    } catch (error) {
+        res.status(401).json({ error: error.message });
+    }
+});
+
+// --- MÓDULO DE CLIENTES E INSTALACIONES ---
 app.get('/api/buscar', async (req, res) => {
     const { criterio } = req.query;
     try {
-        // Usamos la lógica que ya probamos
         const resultados = await buscarCliente(criterio); 
         res.json(resultados);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
-
-// RUTA 2: Registrar Pago (Para el botón de cobrar)
-app.post('/api/pagar', async (req, res) => {
-    // Ahora recibimos también el cobradorId desde el Front-end
-    const { clienteId, monto, metodo, cobradorId } = req.body; 
-    
-    try {
-        const resultado = await registrarPagosDinamicos(clienteId, monto, metodo, parseInt(cobradorId));
-        res.json({ mensaje: "Pago procesado y asignado al cobrador", detalle: resultado });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-// En server.js
-// server.js
-app.get('/api/ticket/:pagoId', async (req, res) => {
-    try {
-        const pago = await prisma.pagos.findUnique({
-            where: { id: parseInt(req.params.pagoId) },
-            include: { 
-                cliente: true // <--- ESTO ES VITAL: Trae los datos del cliente vinculados al pago
-            }
-        });
-
-        if (!pago) {
-            return res.status(404).json({ error: "Pago no encontrado" });
-        }
-
-        res.json(pago);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/reporte-liquidaciones', async (req, res) => {
-    try {
-        const resumen = await obtenerResumenCajaPendiente();
-        res.json(resumen);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-const clienteService = require('./src/services/clienteService');
 
 app.post('/api/instalacion', async (req, res) => {
     try {
@@ -79,36 +44,82 @@ app.post('/api/instalacion', async (req, res) => {
     }
 });
 
-const ticketService = require('./src/services/ticketService');
+// --- MÓDULO DE PAGOS & CAJA (EL CORE DEL NEGOCIO) ---
 
+// 1. Registrar pago vinculado a la SESIÓN ACTIVA
+app.post('/api/pagar', async (req, res) => {
+    const { clienteId, monto, metodo, sesionId } = req.body; // Cambiamos cobradorId por sesionId
+    try {
+        const resultado = await registrarPagosDinamicos(clienteId, monto, metodo, parseInt(sesionId));
+        res.json({ mensaje: "Pago registrado en la sesión", detalle: resultado });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2. Reporte para el ADMIN (Busca sesiones abiertas con dinero)
+app.get('/api/reporte-liquidaciones', async (req, res) => {
+    try {
+        const sesionesAbiertas = await prisma.sesiones_Caja.findMany({
+            where: { estado: "abierta" },
+            include: {
+                usuario: true,
+                pagos: true
+            }
+        });
+
+        const resumen = sesionesAbiertas.map(s => {
+            const total = s.pagos.reduce((sum, p) => sum + Number(p.monto), 0);
+            return {
+                sesion_id: s.id,
+                cobrador_nombre: s.usuario.nombre,
+                cantidad_pagos: s.pagos.length,
+                total: total
+            };
+        });
+        res.json(resumen);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 3. Hacer el CORTE (Liquidar sesión)
+app.post('/api/liquidar-caja', async (req, res) => {
+    const { sesionId, montoEntregado, observaciones } = req.body;
+    try {
+        // Aquí puedes llamar a una función en pagoService que use prisma.$transaction
+        // para cerrar la sesión y crear el registro en Cortes_Caja
+        res.json({ mensaje: "Función de liquidación en desarrollo (Sesión #" + sesionId + ")" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- MÓDULO DE TICKETS SOPORTE ---
 app.post('/api/tickets', async (req, res) => {
     try {
         const { cliente_id, titulo, descripcion, prioridad } = req.body;
-        
-        // Usamos tu función existente de ticketService.js
-        const ticket = await ticketService.abrirTicket(
-            parseInt(cliente_id), 
-            titulo, 
-            descripcion, 
-            prioridad
-        );
-        
+        const ticket = await ticketService.abrirTicket(parseInt(cliente_id), titulo, descripcion, prioridad);
         res.status(201).json({ mensaje: "Ticket abierto correctamente", ticket });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
-// En server.js para hacer el corte de caja al cobrador
-app.post('/api/liquidar-caja', async (req, res) => {
-    const { cobradorId, montoEntregado, observaciones } = req.body;
+
+// --- TICKETS PARA IMPRESIÓN ---
+app.get('/api/ticket/:pagoId', async (req, res) => {
     try {
-        // Llamamos a la función que ya tenemos en el servicio
-        const resultado = await realizarCorteCobrador(cobradorId, montoEntregado, observaciones);
-        res.json({ mensaje: "Liquidación completada con éxito", corte: resultado });
+        const pago = await prisma.pagos.findUnique({
+            where: { id: parseInt(req.params.pagoId) },
+            include: { cliente: true }
+        });
+        if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
+        res.json(pago);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.listen(port, () => {
-    console.log(`🚀 Servidor ERP-Wisp corriendo en http://localhost:${port}`);
+    console.log(`🚀 Servidor ERP-Wisp centralizado en http://localhost:${port}`);
 });

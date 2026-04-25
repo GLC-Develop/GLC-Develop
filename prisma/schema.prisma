@@ -8,119 +8,143 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-
 }
+
 model Pagos {
-  id              Int          @id @default(autoincrement())
-  cliente_id      Int
-  monto           Decimal      @db.Decimal(10, 2)
-  fecha_pago      DateTime     @default(now())
-  metodo_pago     String       
-  
+  id          Int      @id @default(autoincrement())
+  cliente_id  Int
+  monto       Decimal  @db.Decimal(10, 2)
+  fecha_pago  DateTime @default(now())
+  metodo_pago String
+
   // --- Campos de Control de Mensualidades (Anteriores) ---
-  mes_cubierto    String       // Formato "YYYY-MM"
-  periodo_inicio  DateTime?    
-  referencia      String?      
-  notas           String?
+  mes_cubierto   String // Formato "YYYY-MM"
+  periodo_inicio DateTime?
+  referencia     String?
+  notas          String?
 
   // --- Campos de Auditoría de Cobradores (Nuevos) ---
-  cobrador_id     Int?         // Quién recibió el dinero (Tienda 1, 2 o Cobrador)
-  corte_id        Int?         // Vinculado al reporte de entrega de dinero
-  
+  cobrador_id Int? // Quién recibió el dinero (Tienda 1, 2 o Cobrador)
+  corte_id    Int? // Vinculado al reporte de entrega de dinero
+
   // Relaciones
-  cliente         Clientes     @relation(fields: [cliente_id], references: [id])
-  corte           Cortes_Caja? @relation(fields: [corte_id], references: [id])
-  usuario_id    Int?     // Quién registró el pago
-  usuario       Usuarios? @relation(fields: [usuario_id], references: [id])
+  cliente    Clientes     @relation(fields: [cliente_id], references: [id])
+  corte      Cortes_Caja? @relation(fields: [corte_id], references: [id])
+  usuario_id Int? // Quién registró el pago
+  usuario    Usuarios?    @relation(fields: [usuario_id], references: [id])
 }
+
 model Usuarios {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String   // En el futuro usaremos bcrypt
-  rol       String   // "ADMIN", "POS", "TECH"
-  nombre    String
-  activo    Boolean  @default(true)
-  
-  // Relación con los cortes de caja que este usuario genera
-  cortes    Cortes_Caja[] 
+  id       Int     @id @default(autoincrement())
+  username String  @unique
+  password String // Contraseña para Admin/Web
+  pin      String? @unique // PIN de 4-6 dígitos para acceso rápido en POS
+  rol      String // "ADMIN", "POS", "TECH"
+  nombre   String
+  activo   Boolean @default(true)
+
+  cortes   Cortes_Caja[]
+  pagos    Pagos[]
+  sesiones Sesiones_Caja[] // Relación con sus aperturas de caja
 }
+
+model Sesiones_Caja {
+  id               Int       @id @default(autoincrement())
+  usuario_id       Int
+  usuario          Usuarios  @relation(fields: [usuario_id], references: [id])
+  fecha_apertura   DateTime  @default(now())
+  fecha_cierre     DateTime?
+  monto_inicial    Decimal   @db.Decimal(10, 2)
+  monto_final      Decimal?  @db.Decimal(10, 2)
+  estado           String    @default("abierta") // "abierta" o "cerrada"
+  dispositivo_info String? // Para saber desde qué tablet/PC abrieron
+
+  // Relación opcional: vincular pagos directamente a una sesión
+  // pagos          Pagos[] 
+}
+
 model Cortes_Caja {
-  id                Int      @id @default(autoincrement())
-  usuario_identificador String   // Nombre o ID de la tienda/cobrador (ej: "Tienda Centro")
-  monto_esperado    Decimal  @db.Decimal(10, 2)
-  monto_entregado   Decimal  @db.Decimal(10, 2)
-  diferencia        Decimal  @db.Decimal(10, 2)
-  fecha_corte       DateTime @default(now())
-  observaciones     String?
-  
-  // Un corte agrupa muchos pagos
-  pagos             Pagos[]
+  id                    Int    @id @default(autoincrement())
+  usuario_identificador String // (Puedes mantenerlo o usar el nombre del usuario)
+
+  // --- Nueva Relación ---
+  usuario_id Int
+  usuario    Usuarios @relation(fields: [usuario_id], references: [id])
+  // ----------------------
+
+  monto_esperado  Decimal  @db.Decimal(10, 2)
+  monto_entregado Decimal  @db.Decimal(10, 2)
+  diferencia      Decimal  @db.Decimal(10, 2)
+  fecha_corte     DateTime @default(now())
+  observaciones   String?
+  pagos           Pagos[]
 }
+
 model Clientes {
-  id                 Int         @id @default(autoincrement())
-  nombre_completo    String
-  telefono_principal String
+  id                  Int               @id @default(autoincrement())
+  nombre_completo     String
+  telefono_principal  String
   telefono_secundario String?
-  email              String?
-  tipo_fiscal        String      @default("Persona Física")
-  estatus            String      @default("activo")
-  domicilios         Domicilios[]
-  pagos   Pagos[]
-  tickets Tickets_Soporte[]
+  email               String?
+  tipo_fiscal         String            @default("Persona Física")
+  estatus             String            @default("activo")
+  domicilios          Domicilios[]
+  pagos               Pagos[]
+  tickets             Tickets_Soporte[]
 }
 
 model Domicilios {
-  id                 Int        @id @default(autoincrement())
-  cliente_id         Int
-  cliente            Clientes   @relation(fields: [cliente_id], references: [id])
-  direccion_exacta   String
-  colonia            String?
-  referencias        String?
-  dia_pago_mensual   Int
-  servicios          Servicios_Red[]
+  id               Int             @id @default(autoincrement())
+  cliente_id       Int
+  cliente          Clientes        @relation(fields: [cliente_id], references: [id])
+  direccion_exacta String
+  colonia          String?
+  referencias      String?
+  dia_pago_mensual Int
+  servicios        Servicios_Red[]
 }
+
 model Tickets_Soporte {
-  id              Int      @id @default(autoincrement())
-  cliente_id      Int
-  titulo          String   // Ejemplo: "Lentitud", "Sin servicio", "Cambio de lugar"
-  descripcion     String
-  estatus         String   @default("abierto") // abierto, en_proceso, cerrado
-  prioridad       String   @default("media")   // baja, media, alta, critica
-  
+  id          Int    @id @default(autoincrement())
+  cliente_id  Int
+  titulo      String // Ejemplo: "Lentitud", "Sin servicio", "Cambio de lugar"
+  descripcion String
+  estatus     String @default("abierto") // abierto, en_proceso, cerrado
+  prioridad   String @default("media") // baja, media, alta, critica
+
   // Control de gastos operativos
   costo_materiales Decimal @default(0.00) @db.Decimal(10, 2)
   mano_obra_extra  Decimal @default(0.00) @db.Decimal(10, 2)
-  
-  fecha_creacion   DateTime @default(now())
+
+  fecha_creacion   DateTime  @default(now())
   fecha_resolucion DateTime?
 
   // Relación
-  cliente         Clientes @relation(fields: [cliente_id], references: [id])
+  cliente Clientes @relation(fields: [cliente_id], references: [id])
 }
 
-
 model Servicios_Red {
-id               Int      @id @default(autoincrement())
-  domicilio_id     Int
-  ip_interna       String   @unique
-  megas_bajada     Int
-  megas_subida     Int
-  
+  id           Int    @id @default(autoincrement())
+  domicilio_id Int
+  ip_interna   String @unique
+  megas_bajada Int
+  megas_subida Int
+
   // Nuevo campo para automatizar cobros
-  precio_mensual   Decimal  @db.Decimal(10, 2) @default(300.00)
-  
-  tipo_servicio    String   @default("WISP") // WISP o FTTH
-  domicilio        Domicilios @relation(fields: [domicilio_id], references: [id])
-  equipos          Equipos_Instalados[]
+  precio_mensual Decimal @default(300.00) @db.Decimal(10, 2)
+
+  tipo_servicio String               @default("WISP") // WISP o FTTH
+  domicilio     Domicilios           @relation(fields: [domicilio_id], references: [id])
+  equipos       Equipos_Instalados[]
 }
 
 model Equipos_Instalados {
-  id                 Int           @id @default(autoincrement())
-  servicio_id        Int
-  servicio           Servicios_Red @relation(fields: [servicio_id], references: [id])
-  tipo_equipo        String        // Antena, Router, ONT
-  marca              String
-  modelo             String
-  mac                String        @unique
-  serie              String?
+  id          Int           @id @default(autoincrement())
+  servicio_id Int
+  servicio    Servicios_Red @relation(fields: [servicio_id], references: [id])
+  tipo_equipo String // Antena, Router, ONT
+  marca       String
+  modelo      String
+  mac         String        @unique
+  serie       String?
 }

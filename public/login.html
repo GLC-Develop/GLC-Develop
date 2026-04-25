@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso POS | ERP-Wisp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .pin-box {
+            @apply w-14 h-16 border-2 border-slate-700 bg-slate-800 rounded-xl text-2xl flex items-center justify-center font-bold text-blue-400 transition-all duration-150;
+        }
+        .pin-box.active { @apply border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105; }
+        
+        .numpad-btn {
+            @apply w-full h-20 bg-slate-800 hover:bg-slate-700 active:bg-blue-600 rounded-2xl flex items-center justify-center text-2xl font-bold text-white transition-all shadow-md active:scale-90 select-none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-sm w-full space-y-10">
+        <div class="text-center space-y-2">
+            <div class="inline-block p-3 bg-blue-600/10 rounded-full mb-2">
+                <span class="text-3xl">🔐</span>
+            </div>
+            <h1 class="text-3xl font-black text-white">WISP<span class="text-blue-500">POS</span></h1>
+            <p class="text-slate-500 text-xs uppercase tracking-widest font-bold">Ingresa tu PIN de acceso</p>
+        </div>
+
+        <div class="flex justify-between gap-2 px-4" id="pinWrapper">
+            <div class="pin-box" id="box-0"></div>
+            <div class="pin-box" id="box-1"></div>
+            <div class="pin-box" id="box-2"></div>
+            <div class="pin-box" id="box-3"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+            <button onclick="press('1')" class="numpad-btn">1</button>
+            <button onclick="press('2')" class="numpad-btn">2</button>
+            <button onclick="press('3')" class="numpad-btn">3</button>
+            <button onclick="press('4')" class="numpad-btn">4</button>
+            <button onclick="press('5')" class="numpad-btn">5</button>
+            <button onclick="press('6')" class="numpad-btn">6</button>
+            <button onclick="press('7')" class="numpad-btn">7</button>
+            <button onclick="press('8')" class="numpad-btn">8</button>
+            <button onclick="press('9')" class="numpad-btn">9</button>
+            
+            <button onclick="clearPin()" class="numpad-btn bg-red-900/20 text-red-500 hover:bg-red-900/40">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                </svg>
+            </button>
+            
+            <button onclick="press('0')" class="numpad-btn">0</button>
+            
+            <button onclick="submitPin()" class="numpad-btn bg-blue-600 hover:bg-blue-500 shadow-blue-900/40">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </button>
+        </div>
+
+        <p id="statusMsg" class="text-center font-bold text-sm h-4 transition-all"></p>
+    </div>
+
+    <script>
+        let currentPin = "";
+        const msg = document.getElementById('statusMsg');
+
+        function press(num) {
+            if (currentPin.length < 4) {
+                currentPin += num;
+                updateDisplay();
+                if (currentPin.length === 4) {
+                    setTimeout(submitPin, 200); // Auto-envío rápido para mejor UX
+                }
+            }
+        }
+
+        function updateDisplay() {
+            for (let i = 0; i < 4; i++) {
+                const box = document.getElementById(`box-${i}`);
+                if (i < currentPin.length) {
+                    box.innerText = "•"; // Puedes cambiar "•" por currentPin[i] si prefieres ver los números
+                    box.classList.add('active', 'text-white');
+                } else {
+                    box.innerText = "";
+                    box.classList.remove('active', 'text-white');
+                }
+            }
+        }
+
+        function clearPin() {
+            currentPin = "";
+            updateDisplay();
+            msg.innerText = "";
+        }
+
+        async function submitPin() {
+            if (currentPin.length < 4) return;
+            
+            msg.className = "text-center font-bold text-sm h-4 text-blue-400";
+            msg.innerText = "VERIFICANDO...";
+
+            try {
+                const res = await fetch('/api/auth/pos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: currentPin, info: navigator.userAgent })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+						// Guardamos la sesión y los datos de identidad
+						localStorage.setItem('sesion_id', data.sesion.id);
+						localStorage.setItem('usuario_nombre', data.usuario.nombre);
+						localStorage.setItem('usuario_rol', data.usuario.rol); // Guardamos el rol
+
+						msg.className = "text-center font-bold text-sm h-4 text-green-400";
+						msg.innerText = "ACCESO CONCEDIDO: " + data.usuario.rol;
+
+						// REDIRECCIÓN SEGÚN ROL
+						setTimeout(() => {
+							const rol = data.usuario.rol;
+							
+							if (rol === "ADMIN") {
+								window.location.href = "/admin.html";
+							} else if (rol === "TECH") {
+								window.location.href = "/tecnico.html";
+							} else {
+								// Por defecto, cualquier otro (POS) va al punto de venta
+								window.location.href = "/pos.html";
+							}
+						}, 800);
+					} else {
+                    msg.className = "text-center font-bold text-sm h-4 text-red-500 animate-bounce";
+                    msg.innerText = data.error.toUpperCase();
+                    currentPin = "";
+                    setTimeout(updateDisplay, 500);
+                }
+            } catch (err) {
+                msg.innerText = "ERROR DE CONEXIÓN";
+            }
+        }
+
+        // Soporte para teclado físico (NumPad)
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') press(e.key);
+            if (e.key === 'Backspace') clearPin();
+            if (e.key === 'Enter') submitPin();
+        });
+    </script>
+</body>
+</html>

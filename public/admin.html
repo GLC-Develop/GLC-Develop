@@ -7,6 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen">
+<nav class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+        <span class="bg-blue-500/20 text-blue-400 p-2 rounded-lg text-xs font-bold" id="badgeRol">ROL</span>
+        <span class="text-white font-medium" id="displayNombre">Cargando...</span>
+    </div>
+    <button onclick="cerrarSesion()" class="text-xs bg-red-900/20 text-red-400 px-4 py-2 rounded-xl hover:bg-red-900/40 transition-all font-bold uppercase tracking-tighter">
+        Cerrar Sesión 🔒
+    </button>
+</nav>
     <nav class="bg-slate-900 p-5 text-white shadow-xl">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <span class="font-bold text-xl tracking-tight">👑 Panel Administrativo</span>
@@ -81,6 +90,26 @@
         }
 
         window.onload = cargarResumenCajas;
+		// Al cargar la página, verificamos si hay sesión
+window.onload = () => {
+    const nombre = localStorage.getItem('usuario_nombre');
+    const rol = localStorage.getItem('usuario_rol');
+
+    if (!nombre) {
+        // Si no hay datos, lo regresamos al login por seguridad
+        window.location.href = "/login.html";
+    } else {
+        document.getElementById('displayNombre').innerText = nombre;
+        document.getElementById('badgeRol').innerText = rol;
+    }
+};
+
+function cerrarSesion() {
+    // Borramos los datos locales
+    localStorage.clear();
+    // Redirigimos al login
+    window.location.href = "/login.html";
+}
     </script>
 </body>
 </html>
