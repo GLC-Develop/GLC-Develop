@@ -56,7 +56,18 @@ app.post('/api/pagar', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
+app.get('/api/pagos/cliente/:id', async (req, res) => {
+    try {
+        const historial = await prisma.pagos.findMany({
+            where: { cliente_id: parseInt(req.params.id) },
+            orderBy: { periodo_inicio: 'desc' },
+            take: 5 // Solo los últimos 5 para no saturar el POS
+        });
+        res.json(historial);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // 2. Reporte para el ADMIN (Busca sesiones abiertas con dinero)
 app.get('/api/reporte-liquidaciones', async (req, res) => {
     try {

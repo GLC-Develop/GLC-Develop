@@ -28,10 +28,14 @@ model Pagos {
   corte_id    Int? // Vinculado al reporte de entrega de dinero
 
   // Relaciones
-  cliente    Clientes     @relation(fields: [cliente_id], references: [id])
-  corte      Cortes_Caja? @relation(fields: [corte_id], references: [id])
+  cliente    Clientes       @relation(fields: [cliente_id], references: [id])
+  corte      Cortes_Caja?   @relation(fields: [corte_id], references: [id])
+  // Agregar este campo
+  sesion_id  Int?
+  // Opcional: Agregar la relación si ya tienes el modelo Sesiones_Caja
+  sesion     Sesiones_Caja? @relation(fields: [sesion_id], references: [id])
   usuario_id Int? // Quién registró el pago
-  usuario    Usuarios?    @relation(fields: [usuario_id], references: [id])
+  usuario    Usuarios?      @relation(fields: [usuario_id], references: [id])
 }
 
 model Usuarios {
@@ -58,9 +62,9 @@ model Sesiones_Caja {
   monto_final      Decimal?  @db.Decimal(10, 2)
   estado           String    @default("abierta") // "abierta" o "cerrada"
   dispositivo_info String? // Para saber desde qué tablet/PC abrieron
-
   // Relación opcional: vincular pagos directamente a una sesión
-  // pagos          Pagos[] 
+  // --- ESTA ES LA LÍNEA QUE FALTA ---
+  pagos            Pagos[]
 }
 
 model Cortes_Caja {

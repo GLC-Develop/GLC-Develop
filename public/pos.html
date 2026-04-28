@@ -123,26 +123,49 @@
             }
         }
 
-        function mostrarDatosCliente(c) {
-            const serv = c.domicilios[0].servicios[0];
-            document.getElementById('infoCliente').innerHTML = `
-                <h3 class="text-2xl font-black text-slate-800">${c.nombre_completo}</h3>
-                <p class="text-slate-500 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
-                <div class="mt-4 flex gap-2">
-                    <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">IP: ${serv.ip_interna}</span>
-                    <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${c.estatus}</span>
-                </div>
-            `;
-            document.getElementById('labelCostoUnitario').innerText = `$${costoMensualGlobal}`;
-            
-            // Aquí simularíamos traer el historial. En producción haz un fetch a /api/pagos/cliente/${c.id}
-            document.getElementById('historialPagos').innerHTML = `
-                <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center opacity-50">
-                    <span class="text-xs font-bold">Cargando historial...</span>
-                </div>
-            `;
+async function mostrarDatosCliente(c) {
+    const serv = c.domicilios[0].servicios[0];
+    document.getElementById('infoCliente').innerHTML = `
+        <h3 class="text-2xl font-black text-slate-800">${c.nombre_completo}</h3>
+        <p class="text-slate-500 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
+        <div class="mt-4 flex gap-2">
+            <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">IP: ${serv.ip_interna}</span>
+            <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${c.estatus}</span>
+        </div>
+    `;
+    document.getElementById('labelCostoUnitario').innerText = `$${costoMensualGlobal}`;
+    
+    // Llamamos a cargar el historial real
+    cargarHistorial(c.id);
+}
+
+async function cargarHistorial(clienteId) {
+    const contenedor = document.getElementById('historialPagos');
+    try {
+        const res = await fetch(`/api/pagos/cliente/${clienteId}`);
+        const pagos = await res.json();
+        
+        if (pagos.length === 0) {
+            contenedor.innerHTML = `<p class="text-xs text-slate-400 italic">Sin pagos previos.</p>`;
+            return;
         }
 
+        contenedor.innerHTML = pagos.map(p => `
+            <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-800 uppercase">${p.mes_cubierto}</p>
+                    <p class="text-[9px] text-slate-400">${new Date(p.fecha_pago).toLocaleDateString()}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-blue-600">$${p.monto}</p>
+                    <p class="text-[8px] text-slate-400 uppercase">${p.metodo_pago}</p>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        contenedor.innerHTML = `<p class="text-xs text-red-400">Error al cargar historial</p>`;
+    }
+}
         function calcularMeses() {
             const monto = document.getElementById('montoAbono').value;
             const meses = Math.floor(monto / costoMensualGlobal);
