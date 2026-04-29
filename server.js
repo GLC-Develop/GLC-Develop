@@ -12,7 +12,42 @@ const authService = require('./src/services/authService');
 
 app.use(express.json());
 app.use(express.static('public'));
+app.get('/api/clientes/:id/estado-cuenta', async (req, res) => {
+    try {
+        const clienteId = parseInt(req.params.id);
+        
+        // 1. Obtener costo mensual
+        const cliente = await prisma.clientes.findUnique({
+            where: { id: clienteId },
+            include: { domicilios: { include: { servicios: true } } }
+        });
+        
+        const costoMensual = Number(cliente.domicilios[0].servicios[0].precio_mensual);
 
+        // 2. Buscar último pago
+        const ultimoPago = await prisma.pagos.findFirst({
+            where: { cliente_id: clienteId },
+            orderBy: { periodo_inicio: 'desc' }
+        });
+
+        let deudaPendiente = 0;
+        let mesAfectado = "";
+
+        if (ultimoPago && Number(ultimoPago.monto) < costoMensual) {
+            deudaPendiente = costoMensual - Number(ultimoPago.monto);
+            mesAfectado = ultimoPago.mes_cubierto;
+        }
+
+        res.json({
+            costoMensual,
+            deudaPendiente,
+            mesAfectado,
+            ultimoMesPagado: ultimoPago ? ultimoPago.mes_cubierto : "Sin registros"
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // --- MÓDULO DE AUTENTICACIÓN & SESIONES ---
 app.post('/api/auth/pos', async (req, res) => {
     try {

@@ -35,6 +35,8 @@
             </div>
         </div>
 
+        <div id="resultados" class="space-y-4"></div>
+
         <div id="areaTrabajo" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             <div class="space-y-6">
@@ -45,8 +47,7 @@
 
                 <div class="card-neo p-8">
                     <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Últimos Pagos Registrados</h2>
-                    <div id="historialPagos" class="space-y-3">
-                        </div>
+                    <div id="historialPagos" class="space-y-3"></div>
                 </div>
             </div>
 
@@ -105,89 +106,134 @@
         };
 
         async function buscar() {
-            const criterio = document.getElementById('inputBusqueda').value;
-            const res = await fetch(`/api/buscar?criterio=${criterio}`);
-            const clientes = await res.json();
+    const criterio = document.getElementById('inputBusqueda').value;
+    const contenedorResultados = document.getElementById('resultados');
+    const areaTrabajo = document.getElementById('areaTrabajo');
 
-            if (clientes.length > 0) {
-                const c = clientes[0]; // Tomamos el primer resultado
-                clienteActual = c;
-                costoMensualGlobal = Number(c.domicilios[0].servicios[0].precio_mensual);
-                
-                document.getElementById('areaTrabajo').classList.remove('hidden');
-                mostrarDatosCliente(c);
-                document.getElementById('montoAbono').value = costoMensualGlobal;
-                calcularMeses();
-            } else {
-                alert("Cliente no encontrado");
-            }
-        }
+    // 1. Limpieza total antes de empezar
+    areaTrabajo.classList.add('hidden');
+    contenedorResultados.innerHTML = '';
 
-async function mostrarDatosCliente(c) {
-    const serv = c.domicilios[0].servicios[0];
-    document.getElementById('infoCliente').innerHTML = `
-        <h3 class="text-2xl font-black text-slate-800">${c.nombre_completo}</h3>
-        <p class="text-slate-500 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
-        <div class="mt-4 flex gap-2">
-            <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">IP: ${serv.ip_interna}</span>
-            <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${c.estatus}</span>
-        </div>
-    `;
-    document.getElementById('labelCostoUnitario').innerText = `$${costoMensualGlobal}`;
-    
-    // Llamamos a cargar el historial real
-    cargarHistorial(c.id);
-}
+    if (!criterio.trim()) return;
 
-async function cargarHistorial(clienteId) {
-    const contenedor = document.getElementById('historialPagos');
     try {
-        const res = await fetch(`/api/pagos/cliente/${clienteId}`);
-        const pagos = await res.json();
+        const res = await fetch(`/api/buscar?criterio=${criterio}`);
         
-        if (pagos.length === 0) {
-            contenedor.innerHTML = `<p class="text-xs text-slate-400 italic">Sin pagos previos.</p>`;
-            return;
+        // Si el servidor responde con error (404, 500, etc)
+        if (!res.ok) {
+            throw new Error("Servidor no disponible");
         }
 
-        contenedor.innerHTML = pagos.map(p => `
-            <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-800 uppercase">${p.mes_cubierto}</p>
-                    <p class="text-[9px] text-slate-400">${new Date(p.fecha_pago).toLocaleDateString()}</p>
-                </div>
-                <div class="text-right">
-                    <p class="font-bold text-blue-600">$${p.monto}</p>
-                    <p class="text-[8px] text-slate-400 uppercase">${p.metodo_pago}</p>
-                </div>
-            </div>
-        `).join('');
+        const clientes = await res.json();
+
+        // 2. Si hay clientes, procesamos el primero
+        if (clientes && clientes.length > 0) {
+            const c = clientes[0]; 
+            
+            // Verificación de seguridad: ¿Tiene domicilios y servicios?
+            if (!c.domicilios?.[0]?.servicios?.[0]) {
+                contenedorResultados.innerHTML = `
+                    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-xl text-yellow-700 text-sm">
+                        ⚠️ Cliente encontrado pero no tiene un servicio de internet asignado.
+                    </div>`;
+                return;
+            }
+
+            clienteActual = c;
+            costoMensualGlobal = Number(c.domicilios[0].servicios[0].precio_mensual);
+            
+            areaTrabajo.classList.remove('hidden');
+            await mostrarDatosCliente(c); // Usamos await aquí para esperar los datos de deuda
+        } 
+        // 3. Si NO hay clientes (Respuesta vacía del servidor [])
+        else {
+            contenedorResultados.innerHTML = `
+                <div class="bg-orange-100 border-l-4 border-orange-500 p-6 rounded-2xl shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🔍</span>
+                        <div>
+                            <p class="font-black text-orange-800 uppercase text-xs tracking-widest">Sin coincidencias</p>
+                            <p class="text-orange-700 text-sm">No encontramos ningún cliente con: <b>"${criterio}"</b></p>
+                        </div>
+                    </div>
+                </div>`;
+        }
     } catch (error) {
-        contenedor.innerHTML = `<p class="text-xs text-red-400">Error al cargar historial</p>`;
+        console.error("Error capturado:", error);
+        // Solo mostramos error de conexión si el fetch realmente falló (servidor apagado)
+        contenedorResultados.innerHTML = `
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl">
+                <p class="text-red-700 text-xs font-bold uppercase">❌ Error de comunicación</p>
+                <p class="text-red-600 text-sm">No se pudo contactar al servidor o hubo un error interno.</p>
+            </div>`;
     }
 }
+        async function mostrarDatosCliente(c) {
+            // Llamamos al endpoint de estado de cuenta
+            const estadoRes = await fetch(`/api/clientes/${c.id}/estado-cuenta`);
+            const estado = await estadoRes.json();
+
+            document.getElementById('infoCliente').innerHTML = `
+                <h3 class="text-2xl font-black text-slate-800">${c.nombre_completo}</h3>
+                <p class="text-slate-500 text-sm">📍 ${c.domicilios[0].direccion_exacta}</p>
+                <div class="mt-4 p-4 rounded-2xl ${estado.deudaPendiente > 0 ? 'bg-orange-50 border border-orange-100' : 'bg-blue-50 border border-blue-100'}">
+                    <p class="text-[10px] font-black uppercase tracking-widest ${estado.deudaPendiente > 0 ? 'text-orange-500' : 'text-blue-500'}">
+                        ${estado.deudaPendiente > 0 ? '⚠️ Pendiente de completar' : '✅ Estatus de Cuenta'}
+                    </p>
+                    <p class="text-sm font-bold text-slate-700">
+                        ${estado.deudaPendiente > 0 
+                            ? `Faltan <span class="text-orange-600">$${estado.deudaPendiente}</span> para cubrir ${estado.mesAfectado}` 
+                            : `Cubierto hasta: ${estado.ultimoMesPagado}`}
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('labelCostoUnitario').innerText = `$${costoMensualGlobal}`;
+            
+            // Sugerencia inteligente de monto
+            if (estado.deudaPendiente > 0) {
+                document.getElementById('montoAbono').value = estado.deudaPendiente;
+                document.getElementById('labelMeses').innerText = "Completar mes";
+            } else {
+                document.getElementById('montoAbono').value = costoMensualGlobal;
+                calcularMeses();
+            }
+            
+            cargarHistorial(c.id);
+        }
+
+        async function cargarHistorial(clienteId) {
+            const contenedor = document.getElementById('historialPagos');
+            try {
+                const res = await fetch(`/api/pagos/cliente/${clienteId}`);
+                const pagos = await res.json();
+                
+                contenedor.innerHTML = pagos.length === 0 
+                    ? `<p class="text-xs text-slate-400 italic">Sin pagos previos.</p>`
+                    : pagos.map(p => `
+                        <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100">
+                            <div><p class="text-[10px] font-bold text-slate-800 uppercase">${p.mes_cubierto}</p></div>
+                            <div class="text-right">
+                                <p class="font-bold text-blue-600">$${p.monto}</p>
+                                <p class="text-[8px] text-slate-400 uppercase">${p.metodo_pago}</p>
+                            </div>
+                        </div>`).join('');
+            } catch (err) { contenedor.innerHTML = "Error al cargar historial"; }
+        }
+
         function calcularMeses() {
             const monto = document.getElementById('montoAbono').value;
             const meses = Math.floor(monto / costoMensualGlobal);
             const label = document.getElementById('labelMeses');
-            
-            if (meses > 0) {
-                label.innerText = `${meses} mes${meses > 1 ? 'es' : ''}`;
-                label.classList.replace('text-red-500', 'text-blue-700');
-            } else {
-                label.innerText = "Monto insuficiente";
-                label.classList.replace('text-blue-700', 'text-red-500');
-            }
+            label.innerText = meses > 0 ? `${meses} mes${meses > 1 ? 'es' : ''}` : "Monto insuficiente";
         }
 
         async function confirmarYProcesar() {
             const monto = document.getElementById('montoAbono').value;
-            const meses = Math.floor(monto / costoMensualGlobal);
             const sesionId = localStorage.getItem('sesion_id');
+            if (monto <= 0) return alert("Monto no válido");
 
-            if (meses <= 0) return alert("El monto no alcanza para cubrir un mes.");
-
-            if (!confirm(`¿Registrar abono de $${monto} para cubrir ${meses} mes(es)?`)) return;
+            if (!confirm(`¿Registrar abono de $${monto}?`)) return;
 
             const res = await fetch('/api/pagar', {
                 method: 'POST',
@@ -200,8 +246,8 @@ async function cargarHistorial(clienteId) {
                 })
             });
 
-            const data = await res.json();
             if (res.ok) {
+                const data = await res.json();
                 const pagoId = Array.isArray(data.detalle) ? data.detalle[0].id : data.detalle.id;
                 mostrarTicket(pagoId);
             }
@@ -215,9 +261,7 @@ async function cargarHistorial(clienteId) {
                 <div class="space-y-2 text-sm font-mono">
                     <p class="flex justify-between"><span>Folio:</span> <b>#${pago.id}</b></p>
                     <p class="flex justify-between"><span>Total:</span> <b>$${pago.monto}</b></p>
-                    <p class="flex justify-between"><span>Estatus:</span> <b>PAGADO</b></p>
-                </div>
-            `;
+                </div>`;
             document.getElementById('modalTicket').classList.remove('hidden');
         }
 
